@@ -5,9 +5,13 @@ import pickle  as pk
 import gzip    as gz
 import numpy   as np
 import pandas  as pd
-
 import NBR6123
 
+try:
+    AllCases = pd.read_excel('AllCases.xlsx', sheet_name='AllCases')
+except:
+    sys.exit('File "AllCases.xlsx" not available in current folder!')
+ 
 #==============================================================================
 def scanivalve_process(path, prefix, dwnd=0, avg=1, per=64*32):
 #==============================================================================
@@ -155,21 +159,15 @@ def scanivalve_process(path, prefix, dwnd=0, avg=1, per=64*32):
 #==============================================================================
 #==============================================================================
 #==============================================================================
-class HFPI:
+class OHFPI:
 #==============================================================================
 #==============================================================================
 #==============================================================================
-    try:
-        AllCases = pd.read_excel('AllCases.xlsx', sheetname='AllCases')
-    except:
-        sys.exit('File "AllCases.xlsx" not available in current folder!')
-
-#=============================================================================
-    
+   
     def __init__(self, path, prefix, stype='3dof'):
 
         try:
-            case        =  self.AllCases.loc[prefix]
+            case  =  AllCases.loc[prefix]
         except:
             sys.exit('Entry not available in "AllCases.xlsx" file!')
 
@@ -435,3 +433,4 @@ class HFPI:
         return Cx, Cy, Ct, Cm, Cs
 
 #==============================================================================
+
