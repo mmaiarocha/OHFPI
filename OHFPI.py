@@ -7,14 +7,20 @@ import numpy   as np
 import pandas  as pd
 import NBR6123
 
+#==============================================================================
+# 1. Loading table with all wind tunnel tests available
+#==============================================================================
+
 try:
     AllCases = pd.read_excel('AllCases.xlsx', sheet_name='AllCases')
 except:
     sys.exit('File "AllCases.xlsx" not available in current folder!')
- 
+
 #==============================================================================
+# 2. Preliminary test data conversion (from raw Scanivalve files)
+#==============================================================================
+
 def scanivalve_process(path, prefix, dwnd=0, avg=1, per=64*32):
-#==============================================================================
 
 # 1. Define data type for each column of files to be read           
 
@@ -157,12 +163,10 @@ def scanivalve_process(path, prefix, dwnd=0, avg=1, per=64*32):
     return batch
 
 #==============================================================================
+# 3. OHFPI Class constructor
 #==============================================================================
-#==============================================================================
+
 class OHFPI:
-#==============================================================================
-#==============================================================================
-#==============================================================================
    
     def __init__(self, path, prefix, stype='3dof'):
 
@@ -210,24 +214,28 @@ class OHFPI:
         return
 
 
-#=============================================================================
+#==============================================================================
+# 4. OHFPI Class methods
+#==============================================================================
+# 4.1. Read structure defined as 3 d.o.f. per floor
+#==============================================================================
 
     def read_3dof(self):
 
 # 1. Define data type for each column of files to be read           
 
 # 1.1 Height and lumped masses
-        typ1  = [('Si','i'),        # storey ID
+        typ1  = [('Si','i'),        # floor ID
                  ('ZS','f'),        # vertical coordinate of storey
                  ('MS','f'),        # storey mass 
                  ('IS','f')]        # storey moment of inertia (vertical axis)
 
 # 1.2 Frequencies
-        typ2  = [('K','i'),         # mode ID
+        typ2  = [('Ki','i'),        # mode ID
                  ('fk','f')]        # modal frequency
 
 # 1.3 Modal shapes
-        typ3  = [('Si','i'),        # storey ID
+        typ3  = [('Si','i'),        # floor ID
                  ('qX','f'),        # modal displacement in X (translation)
                  ('qY','f'),        # modal displacement in Y (translation)
                  ('qR','f')]        # modal displacement in Z (rotation)
@@ -243,8 +251,7 @@ class OHFPI:
         X0 =  np.zeros(self.ZS.shape)
 
         self.XS =  np.vstack((      X0,         X0,    self.ZS  )).T
-        self.MS =  np.vstack((dat1['MS'], dat1['MS'], dat1['IS'])
-                             ).T.reshape((3*self.NS,))
+        self.MS =  np.vstack((dat1['MS'], dat1['MS'], dat1['IS'])).T.reshape((3*self.NS,))
 
 # 3. Read modal frequencies (must be already sorted)
 
@@ -257,6 +264,7 @@ class OHFPI:
 # 4. Read modal shapes (must be in the same order as fk)
 
         dat3 =  np.genfromtxt(self.modefile, dtype=typ3)
+        
         Si0  =  dat3['Si'][0]            # to mark beginning of new modes
         k    = -1
 
@@ -265,7 +273,7 @@ class OHFPI:
             if (s  ==  Si0):
                 k  =  k + 1
             
-            i  = list(self.Si).index(s)     # locate store index by store ID
+            i  = list(self.Si).index(s)  # locate store index by store ID
 
             self.QS[3*i+0, k] = qx
             self.QS[3*i+1, k] = qy
@@ -288,7 +296,9 @@ class OHFPI:
 
         return
 
-#=============================================================================
+#==============================================================================
+# 4.2. Read structure defined through TQS output files
+#==============================================================================
 
     def read_TQS(self):
     
@@ -303,9 +313,9 @@ class OHFPI:
 # 1.2 Lumped nodal masses
         typ1  = [('Ni','i'),        # node ID
                  ('MN','f')]        # node mass 
-  
+    
 # 1.3 Frequencies
-        typ2  = [('K', 'i'),        # mode ID (not used)
+        typ2  = [('Ki','i'),        # mode ID (not used)
                  ('fk','f')]        # modal frequency (must be sorted!!!)
 
 # 1.4 Modal shapes
@@ -327,8 +337,7 @@ class OHFPI:
         dat1    =  np.genfromtxt(self.massfile, dtype=typ1)
     
         self.Mi =  9810.*dat1['MN']
-        self.MN  =  np.vstack((self.Mi, self.Mi, self.Mi)
-                              ).T.reshape((3*self.NN,))
+        self.MN =  np.vstack((self.Mi, self.Mi, self.Mi)).T.reshape((3*self.NN,))
 
 # 4. Read modal frequencies (must be sorted)
 
@@ -336,11 +345,11 @@ class OHFPI:
 
         self.fk =  1/dat2['fk']
         self.NQ =  len(self.fk)
-        self.QS =  np.zeros((3*self.NN,self.NQ))
+        self.QN =  np.zeros((3*self.NN,self.NQ))
     
 # 5. Read modal shapes (must be ascending sorted by fk)
 
-        dat3    =  np.genfromtxt(self.modefile, dtype=typ3)
+        dat3 =  np.genfromtxt(self.modefile, dtype=typ3)
 
         NiN  =  list(self.Ni)
         NiQ  =  list(dat3['Ni'][0:self.NN])    # all modes labels/order
@@ -358,8 +367,7 @@ class OHFPI:
             qY = dat3['qY'][k*self.NN:(k+1)*self.NN]
             qZ = dat3['qZ'][k*self.NN:(k+1)*self.NN]
 
-            self.QN[:,k] = np.vstack((qX[ni], qY[ni], qZ[ni])
-                                     ).T.reshape((3*self.NN,))       
+            self.QN[:,k] = np.vstack((qX[ni], qY[ni], qZ[ni])).T.reshape((3*self.NN,))       
         
 # 6. Normalize modal shapes for unitary modal masses
 
@@ -377,7 +385,8 @@ class OHFPI:
 
         return
     
-
+#==============================================================================
+# 4.3. Object iterator over all wind directions
 #==============================================================================
 
     def batchIter(self):
@@ -395,9 +404,9 @@ class OHFPI:
             except:
                 sys.exit('Could not read data file {0}!'.format(file))
 
-
 #==============================================================================
-
+# 4.4. Aerodynamic coefficients
+#==============================================================================
     def aerocoeffs(self):
     
         Cm     =  np.empty((len(self.batch),3))
