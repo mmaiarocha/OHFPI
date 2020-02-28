@@ -384,7 +384,7 @@ class OHFPI:
                 ortho[ii,jj] = np.dot(self.QN[:,ii],self.QN[:,jj])
 
         return
-    
+
 #==============================================================================
 # 4.3. Object iterator over all wind directions
 #==============================================================================
@@ -409,8 +409,8 @@ class OHFPI:
 #==============================================================================
     def aerocoeffs(self):
     
-        Cm     =  np.empty((len(self.batch),3))
-        Cs     =  np.empty((len(self.batch),3))
+        Cm     =  np.empty((3,len(self.batch)))
+        Cs     =  np.empty((3,len(self.batch)))
     
         Cx, Cy =  NBR6123.drag(self.Bx, self.By, self.Hz, case='low')
     
@@ -431,13 +431,13 @@ class OHFPI:
             Cy0 = -Cp.dot(CAy)/(self.Bx*        (self.Hz-self.H0))
             Ct0 = -Cp.dot(CAt)/(self.By*self.Bx*(self.Hz-self.H0))
 
-            Cm[kb,0] = Cx0.mean()
-            Cm[kb,1] = Cy0.mean()
-            Cm[kb,2] = Ct0.mean()
+            Cm[0,kb] = Cx0.mean()
+            Cm[1,kb] = Cy0.mean()
+            Cm[2,kb] = Ct0.mean()
         
-            Cs[kb,0] = Cx0.std()
-            Cs[kb,1] = Cy0.std()
-            Cs[kb,2] = Ct0.std()
+            Cs[0,kb] = Cx0.std()
+            Cs[1,kb] = Cy0.std()
+            Cs[2,kb] = Ct0.std()
             
         return Cx, Cy, Ct, Cm, Cs
 
